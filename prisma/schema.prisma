@@ -1,0 +1,39 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model StudySet {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  terms       Term[]
+  Progress    Progress[]
+}
+
+model Term {
+  id         String   @id @default(cuid())
+  term       String
+  definition String
+  studySetId String
+  studySet   StudySet @relation(fields: [studySetId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Progress {
+  id         String   @id @default(cuid())
+  userId     String
+  studySetId String
+  studySet   StudySet @relation(fields: [studySetId], references: [id])
+  mode       String   // flashcard, matching, quiz
+  score      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+} 
