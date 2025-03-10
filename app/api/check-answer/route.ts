@@ -8,15 +8,20 @@ export async function POST(req: Request) {
   try {
     const { userAnswer, correctAnswer } = await req.json();
 
-    const prompt = `You are a teacher evaluating student answers. Compare the following student answer to the correct answer and determine if they are semantically equivalent or if the student's answer demonstrates understanding of the concept. Reply by not saying student but you.
+    const prompt = `You are a teacher evaluating student answers. Your task is to determine if the following two answers convey the same meaning or information, even if worded differently. Be strict in your evaluation - the answers must convey the exact same concept.
 
 Correct Answer: "${correctAnswer}"
-Student Answer: "${userAnswer}"
+Your Answer: "${userAnswer}"
 
-Analyze both answers and respond in the following JSON format:
+Consider:
+1. Do both answers convey the exact same information?
+2. Are there any key differences in meaning?
+3. Would both answers be considered functionally equivalent in an educational context?
+
+Respond in the following JSON format:
 {
   "isCorrect": true/false,
-  "explanation": "Brief explanation of why the answer is correct or incorrect"
+  "explanation": "Brief explanation why the answer is correct or incorrect"
 }`;
 
     const result = await model.generateContent(prompt);
@@ -24,15 +29,22 @@ Analyze both answers and respond in the following JSON format:
     const text = response.text();
 
     try {
-      const parsedResponse = JSON.parse(text);
+      // Clean the response text by removing markdown code blocks and any extra whitespace
+      const cleanedText = text
+        .replace(/```json\n?|\n?```/g, "") // Remove markdown code blocks
+        .trim();
+      const parsedResponse = JSON.parse(cleanedText);
       return NextResponse.json(parsedResponse);
     } catch (error) {
       console.error("Failed to parse AI response:", error);
-      // Fallback to basic text parsing if JSON parsing fails
-      const isCorrect = text.toLowerCase().includes("true");
+      // Fallback to basic string comparison if JSON parsing fails
+      const isCorrect =
+        userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
       return NextResponse.json({
         isCorrect,
-        explanation: text,
+        explanation: isCorrect
+          ? "Exact match"
+          : "The answer does not match exactly",
       });
     }
   } catch (error) {

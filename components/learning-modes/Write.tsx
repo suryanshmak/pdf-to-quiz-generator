@@ -211,7 +211,6 @@ export function Write({ terms, studySetId }: WriteProps) {
                         <div className="text-base leading-relaxed">
                           {aiFeedback?.explanation
                             .toString()
-                            .substring(48)
                             .replace(/[{}`]/g, "")
                             .replace(/^"|"$/g, "")
                             .trim()}

@@ -35,13 +35,15 @@ export function ProgressOverview({
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {mastered}
             </div>
-            <div className="text-sm text-muted-foreground">Terms Mastered</div>
+            <div className="text-sm text-muted-foreground">
+              Questions Mastered
+            </div>
           </div>
           <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
             <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {totalTerms}
             </div>
-            <div className="text-sm text-muted-foreground">Total Terms</div>
+            <div className="text-sm text-muted-foreground">Total Questions</div>
           </div>
         </div>
       </CardContent>

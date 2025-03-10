@@ -6,15 +6,15 @@ import { Flashcard } from "@/components/learning-modes/Flashcard";
 import { Matching } from "@/components/learning-modes/Matching";
 import { Quiz } from "@/components/learning-modes/Quiz";
 import { useEffect, useState } from "react";
-import { use } from "react";
 import { Write } from "@/components/learning-modes/Write";
 import { Test } from "@/components/learning-modes/Test";
 import { Overview } from "@/components/study-set/Overview";
+import { useParams } from "next/navigation";
 
 interface StudySetPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 interface StudySetWithTerms {
@@ -41,8 +41,8 @@ interface Progress {
   updatedAt: Date;
 }
 
-export default function StudySetPage({ params }: StudySetPageProps) {
-  const { id } = use(params);
+export default function StudySetPage() {
+  const { id } = useParams();
   const [studySet, setStudySet] = useState<StudySetWithTerms | null>(null);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [loading, setLoading] = useState(true);

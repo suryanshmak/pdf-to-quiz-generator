@@ -332,7 +332,6 @@ export function Test({ terms, studySetId }: TestProps) {
                         <div className="text-base leading-relaxed">
                           {aiFeedback?.explanation
                             .toString()
-                            .substring(48)
                             .replace(/[{}`]/g, "")
                             .replace(/^"|"$/g, "")
                             .trim()}
