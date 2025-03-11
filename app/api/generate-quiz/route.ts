@@ -154,7 +154,7 @@ export async function POST(req: Request) {
           text: "You are a teacher. Your job is to take a document, and create a multiple choice test based on the content of the document. Each option should be roughly equal in length. Make sure to include a mix of easy, medium, and hard questions. Mark the correct answer with [CORRECT] at the start of the option.",
         },
         {
-          text: "Create a multiple choice test with 5 questions based on this document. Format each question as:\n1. Question\na) Option\nb) Option\nc) Option\nd) Option\n---",
+          text: "Create a multiple choice test with how many ever questions based on this document. Format each question as:\n1. Question\na) Option\nb) Option\nc) Option\nd) Option\n---",
         },
         {
           inlineData: {
