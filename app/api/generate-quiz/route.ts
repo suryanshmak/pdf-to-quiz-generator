@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-export const maxDuration = 60;
+export const maxDuration = 300; // Increased timeout for PDF processing
 
 function parseQuizResponse(text: string) {
   const questions = [];
@@ -72,16 +72,22 @@ function parseQuizResponse(text: string) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("Request body received");
-
     const files = JSON.parse(body.prompt);
-    console.log("Files parsed:", files.length);
+
+    if (!files || !files.length) {
+      return new Response(JSON.stringify({ error: "No files provided" }), {
+        status: 400,
+      });
+    }
 
     const firstFile = files[0].data;
-    console.log("First file data length:", firstFile.length);
+    if (!firstFile) {
+      return new Response(JSON.stringify({ error: "Invalid file data" }), {
+        status: 400,
+      });
+    }
 
     try {
-      console.log("Calling AI model...");
       const result = await model.generateContent([
         {
           text: "You are a teacher. Your job is to take a document, and create a multiple choice test based on the content of the document. Each option should be roughly equal in length. Make sure to include a mix of easy, medium, and hard questions.",
@@ -97,14 +103,20 @@ export async function POST(req: Request) {
         },
       ]);
 
-      console.log("AI model response received");
-      const response = await result.response;
-      const responseText = response.text();
-      console.log("AI Response:", responseText);
+      if (!result.response) {
+        throw new Error("No response from AI model");
+      }
+
+      const responseText = result.response.text();
+      if (!responseText) {
+        throw new Error("Empty response from AI model");
+      }
 
       // Split response into individual questions
       const questionBlocks = responseText.split("---").filter(Boolean);
-      const totalQuestions = questionBlocks.length;
+      if (!questionBlocks.length) {
+        throw new Error("No questions generated");
+      }
 
       // Parse questions one by one
       const questions = [];
@@ -115,10 +127,12 @@ export async function POST(req: Request) {
         }
       }
 
-      console.log("Questions parsed successfully");
+      if (!questions.length) {
+        throw new Error("Failed to parse any questions");
+      }
+
       const validatedQuestions = questionsSchema.parse(questions);
 
-      console.log("Creating study set...");
       const studySet = await prisma.studySet.create({
         data: {
           title: files[0].name,
@@ -143,31 +157,24 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log("Study set created:", studySet.id);
-
       return Response.json({
         questions: validatedQuestions,
         studySetId: studySet.id,
-        totalQuestions,
+        totalQuestions: questionBlocks.length,
       });
     } catch (error) {
       console.error("Error in AI or database operation:", error);
-      if (error instanceof Error) {
-        console.error("Error details:", error.message, error.stack);
-      }
       return new Response(
         JSON.stringify({
-          error: "Failed to generate quiz or save to database",
-          details: error instanceof Error ? error.message : String(error),
+          error:
+            error instanceof Error ? error.message : "Failed to generate quiz",
+          details: error instanceof Error ? error.stack : String(error),
         }),
         { status: 500 }
       );
     }
   } catch (error) {
     console.error("Error parsing request:", error);
-    if (error instanceof Error) {
-      console.error("Error details:", error.message, error.stack);
-    }
     return new Response(
       JSON.stringify({
         error: "Failed to parse request data",
