@@ -7,6 +7,9 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 export const maxDuration = 60; // Maximum allowed duration for Vercel hobby plan
 
+// Maximum PDF size in bytes (4MB)
+const MAX_PDF_SIZE = 4 * 1024 * 1024;
+
 function parseQuizResponse(text: string) {
   const questions = [];
   const lines = text.split("\n");
@@ -71,40 +74,87 @@ function parseQuizResponse(text: string) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const files = JSON.parse(body.prompt);
+    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      throw new Error("Missing Google AI API key");
+    }
 
+    const contentLength = parseInt(
+      req.headers.get("content-length") || "0",
+      10
+    );
+    if (contentLength > MAX_PDF_SIZE) {
+      return new Response(
+        JSON.stringify({
+          error: "PDF file too large",
+          details: "Maximum file size is 4MB",
+        }),
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json();
+    if (!body.prompt) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing prompt in request body",
+        }),
+        { status: 400 }
+      );
+    }
+
+    const files = JSON.parse(body.prompt);
     if (!files || !files.length) {
-      return new Response(JSON.stringify({ error: "No files provided" }), {
-        status: 400,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "No files provided",
+        }),
+        { status: 400 }
+      );
     }
 
     const firstFile = files[0].data;
     if (!firstFile) {
-      return new Response(JSON.stringify({ error: "Invalid file data" }), {
-        status: 400,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Invalid file data",
+        }),
+        { status: 400 }
+      );
     }
 
     // Extract base64 PDF data
     const pdfData = firstFile.includes("base64,")
       ? firstFile.split("base64,")[1]
       : firstFile;
+
     if (!pdfData) {
       return new Response(
-        JSON.stringify({ error: "Invalid PDF data format" }),
+        JSON.stringify({
+          error: "Invalid PDF data format",
+        }),
         { status: 400 }
       );
     }
 
     try {
+      // Validate PDF data size after base64 decoding
+      const decodedLength = Buffer.from(pdfData, "base64").length;
+      if (decodedLength > MAX_PDF_SIZE) {
+        return new Response(
+          JSON.stringify({
+            error: "Decoded PDF file too large",
+            details: "Maximum file size is 4MB",
+          }),
+          { status: 400 }
+        );
+      }
+
       const result = await model.generateContent([
         {
           text: "You are a teacher. Your job is to take a document, and create a multiple choice test based on the content of the document. Each option should be roughly equal in length. Make sure to include a mix of easy, medium, and hard questions. Mark the correct answer with [CORRECT] at the start of the option.",
         },
         {
-          text: "Create a multiple choice test with 10 questions based on this document. Format each question as:\n1. Question\na) Option\nb) Option\nc) Option\nd) Option\n---",
+          text: "Create a multiple choice test with 5 questions based on this document. Format each question as:\n1. Question\na) Option\nb) Option\nc) Option\nd) Option\n---",
         },
         {
           inlineData: {
@@ -122,8 +172,6 @@ export async function POST(req: Request) {
       if (!responseText) {
         throw new Error("Empty response from AI model");
       }
-
-      console.log("AI Response:", responseText); // Log the raw response
 
       const questionBlocks = responseText.split("---").filter(Boolean);
       if (!questionBlocks.length) {
@@ -192,6 +240,28 @@ export async function POST(req: Request) {
         stack: error instanceof Error ? error.stack : undefined,
         type: error instanceof Error ? error.constructor.name : typeof error,
       });
+
+      // Check for specific error types
+      if (error instanceof Error) {
+        if (error.message.includes("prisma")) {
+          return new Response(
+            JSON.stringify({
+              error: "Database error",
+              details: "Failed to save quiz to database",
+            }),
+            { status: 500 }
+          );
+        }
+        if (error.message.includes("AI")) {
+          return new Response(
+            JSON.stringify({
+              error: "AI model error",
+              details: "Failed to generate questions",
+            }),
+            { status: 500 }
+          );
+        }
+      }
 
       return new Response(
         JSON.stringify({
