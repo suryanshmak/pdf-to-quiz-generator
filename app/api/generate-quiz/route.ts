@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-export const maxDuration = 300; // Increased timeout for PDF processing
+export const maxDuration = 60; // Maximum allowed duration for Vercel hobby plan
 
 function parseQuizResponse(text: string) {
   const questions = [];
