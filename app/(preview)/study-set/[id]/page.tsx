@@ -100,19 +100,15 @@ export default function StudySetPage() {
     const maxPossibleScore = studySet.terms.length * progress.length;
     const overallProgress = Math.round((totalScore / maxPossibleScore) * 100);
 
-    // Consider a term mastered if it's been correctly answered in at least one mode
-    const masteredTerms = new Set<string>();
-    progress.forEach((p) => {
-      const scorePerTerm = p.score / studySet.terms.length;
-      if (scorePerTerm >= 0.8) {
-        // 80% threshold for mastery
-        studySet.terms.forEach((term) => masteredTerms.add(term.id));
-      }
-    });
+    // Count terms that have been mastered in any mode
+    const masteredCount = progress.reduce(
+      (acc, p) => Math.max(acc, p.score),
+      0
+    );
 
     return {
       overall: overallProgress,
-      mastered: masteredTerms.size,
+      mastered: masteredCount,
     };
   };
 
