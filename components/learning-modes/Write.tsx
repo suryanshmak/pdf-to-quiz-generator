@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ export function Write({ terms, studySetId }: WriteProps) {
     explanation: string;
   } | null>(null);
 
-  const generateQuestions = () => {
+  const generateQuestions = useCallback(() => {
     const shuffledTerms = [...terms].sort(() => Math.random() - 0.5);
     setQuestions(shuffledTerms);
     setCurrentIndex(0);
@@ -37,11 +37,11 @@ export function Write({ terms, studySetId }: WriteProps) {
     setIsAnswered(false);
     setScore(0);
     setIsComplete(false);
-  };
+  }, [terms]);
 
   useEffect(() => {
     generateQuestions();
-  }, [terms]);
+  }, [generateQuestions]);
 
   const currentQuestion = questions[currentIndex];
 

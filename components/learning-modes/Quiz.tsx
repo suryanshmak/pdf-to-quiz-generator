@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -32,7 +32,7 @@ export function Quiz({ terms, studySetId }: QuizProps) {
   const [isComplete, setIsComplete] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  const generateQuestions = () => {
+  const generateQuestions = useCallback(() => {
     const shuffledTerms = [...terms].sort(() => Math.random() - 0.5);
     const generatedQuestions = shuffledTerms.map((term) => {
       const wrongAnswers = terms
@@ -60,18 +60,22 @@ export function Quiz({ terms, studySetId }: QuizProps) {
     setScore(0);
     setIsComplete(false);
     localStorage.removeItem("quizProgress"); // Clear saved progress when starting new quiz
-  };
+  }, [terms]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  const handleAnswer = () => {
-    if (selectedAnswer === currentQuestion?.correctAnswer) {
-      setScore((prev) => prev + 1);
-    }
-    setIsAnswered(true);
-  };
+  const handleAnswer = useCallback(
+    (selectedAnswer: string) => {
+      setSelectedAnswer(selectedAnswer);
+      setIsAnswered(true);
+      if (selectedAnswer === currentQuestion?.correctAnswer) {
+        setScore((prev) => prev + 1);
+      }
+    },
+    [currentQuestion?.correctAnswer]
+  );
 
-  const handleNext = async () => {
+  const handleNext = useCallback(async () => {
     if (currentQuestionIndex === questions.length - 1) {
       setIsComplete(true);
       // Save progress when quiz is completed
@@ -95,7 +99,7 @@ export function Quiz({ terms, studySetId }: QuizProps) {
       setSelectedAnswer("");
       setIsAnswered(false);
     }
-  };
+  }, [currentQuestionIndex, questions.length, score, studySetId]);
 
   // Load progress from localStorage
   useEffect(() => {
@@ -123,7 +127,7 @@ export function Quiz({ terms, studySetId }: QuizProps) {
     } else {
       generateQuestions();
     }
-  }, [terms]); // Add terms as dependency to regenerate when terms change
+  }, [terms, generateQuestions]);
 
   // Save progress to localStorage
   useEffect(() => {
@@ -169,7 +173,7 @@ export function Quiz({ terms, studySetId }: QuizProps) {
           break;
         case "Enter":
           if (!isAnswered && selectedAnswer) {
-            handleAnswer();
+            handleAnswer(selectedAnswer);
           } else if (isAnswered) {
             handleNext();
           }
@@ -294,7 +298,7 @@ export function Quiz({ terms, studySetId }: QuizProps) {
               {!isAnswered ? (
                 <Button
                   className="w-full mt-8 h-14 text-lg shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_20px_-3px_rgba(0,0,0,0.2)] transition-shadow duration-300"
-                  onClick={handleAnswer}
+                  onClick={() => handleAnswer(selectedAnswer)}
                   disabled={!selectedAnswer}
                 >
                   Check Answer

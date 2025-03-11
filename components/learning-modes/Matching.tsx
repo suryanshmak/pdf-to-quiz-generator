@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shuffle } from "lucide-react";
@@ -28,35 +28,37 @@ export function Matching({ terms }: MatchingProps) {
   const [matches, setMatches] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
 
-  const initializeCards = () => {
-    const shuffledCards = [
-      ...terms.map((term) => ({
-        id: term.id + "-term",
-        content: term.term,
-        type: "term" as const,
-        isMatched: false,
-        isFlipped: false,
-        originalId: term.id,
-      })),
-      ...terms.map((term) => ({
-        id: term.id + "-def",
-        content: term.definition,
-        type: "definition" as const,
-        isMatched: false,
-        isFlipped: false,
-        originalId: term.id,
-      })),
-    ].sort(() => Math.random() - 0.5);
+  const initializeCards = useCallback(() => {
+    const termCards = terms.map((term) => ({
+      id: term.id + "-term",
+      content: term.term,
+      type: "term" as const,
+      isMatched: false,
+      isFlipped: false,
+      originalId: term.id,
+    }));
 
-    setCards(shuffledCards);
+    const definitionCards = terms.map((term) => ({
+      id: term.id + "-definition",
+      content: term.definition,
+      type: "definition" as const,
+      isMatched: false,
+      isFlipped: false,
+      originalId: term.id,
+    }));
+
+    const allCards = [...termCards, ...definitionCards].sort(
+      () => Math.random() - 0.5
+    );
+    setCards(allCards);
     setSelectedCards([]);
     setMatches(0);
     setIsChecking(false);
-  };
+  }, [terms]);
 
   useEffect(() => {
     initializeCards();
-  }, []);
+  }, [initializeCards]);
 
   useEffect(() => {
     if (selectedCards.length === 2 && !isChecking) {
@@ -170,7 +172,7 @@ export function Matching({ terms }: MatchingProps) {
             <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
               Congratulations!
             </h2>
-            <p className="text-2xl">You've matched all the terms!</p>
+            <p className="text-2xl">You&aposve matched all the terms!</p>
             <Button
               className="mt-8 h-14 text-lg shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_20px_-3px_rgba(0,0,0,0.2)] transition-shadow duration-300"
               onClick={initializeCards}

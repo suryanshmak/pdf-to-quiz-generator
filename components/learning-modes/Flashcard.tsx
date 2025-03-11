@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Repeat, Sparkles } from "lucide-react";
@@ -23,7 +23,9 @@ export function Flashcard({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [shuffled, setShuffled] = useState(false);
-  const [mastered, setMastered] = useState<Set<number>>(new Set());
+  const [masteredIndices, setMasteredIndices] = useState<Set<number>>(
+    new Set()
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   const currentTerm = terms[currentIndex];
@@ -47,7 +49,7 @@ export function Flashcard({
           const masteredSet = new Set(
             Array.from({ length: masteredCount }, (_, i) => i)
           );
-          setMastered(masteredSet);
+          setMasteredIndices(masteredSet);
         }
       } catch (error) {
         console.error("Error loading progress:", error);
@@ -59,55 +61,49 @@ export function Flashcard({
     loadProgress();
   }, [studySetId]);
 
-  const handleNext = () => {
-    if (currentIndex < terms.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    }
-  };
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % terms.length);
+    setIsFlipped(false);
+  }, [terms.length]);
 
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setIsFlipped(false);
-    }
-  };
+  const handlePrevious = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + terms.length) % terms.length);
+    setIsFlipped(false);
+  }, [terms.length]);
 
-  const handleShuffle = () => {
+  const handleShuffle = useCallback(() => {
     const shuffledTerms = [...terms].sort(() => Math.random() - 0.5);
-    terms.splice(0, terms.length, ...shuffledTerms);
     setCurrentIndex(0);
     setIsFlipped(false);
     setShuffled(!shuffled);
-  };
+  }, [terms, shuffled]);
 
-  const toggleMastered = async () => {
-    const newMastered = new Set(mastered);
-    if (mastered.has(currentIndex)) {
-      newMastered.delete(currentIndex);
+  const toggleMastered = useCallback(async () => {
+    const newMasteredIndices = new Set(masteredIndices);
+    if (newMasteredIndices.has(currentIndex)) {
+      newMasteredIndices.delete(currentIndex);
     } else {
-      newMastered.add(currentIndex);
-      // Save progress when a card is mastered
-      try {
-        await fetch("/api/progress", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            studySetId,
-            mode: "flashcard",
-            score: newMastered.size,
-          }),
-        });
-        // Notify parent of progress change
-        onProgressChange?.();
-      } catch (error) {
-        console.error("Failed to save progress:", error);
-      }
+      newMasteredIndices.add(currentIndex);
     }
-    setMastered(newMastered);
-  };
+    setMasteredIndices(newMasteredIndices);
+
+    try {
+      await fetch("/api/progress", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studySetId,
+          mode: "flashcard",
+          score: newMasteredIndices.size,
+        }),
+      });
+      onProgressChange?.();
+    } catch (error) {
+      console.error("Failed to save progress:", error);
+    }
+  }, [currentIndex, masteredIndices, studySetId, onProgressChange]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -135,7 +131,16 @@ export function Flashcard({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, isFlipped, mastered, shuffled]);
+  }, [
+    currentIndex,
+    isFlipped,
+    masteredIndices,
+    shuffled,
+    handleNext,
+    handlePrevious,
+    toggleMastered,
+    handleShuffle,
+  ]);
 
   if (isLoading) {
     return (
@@ -166,7 +171,7 @@ export function Flashcard({
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full font-medium">
-            {mastered.size} mastered
+            {masteredIndices.size} mastered
           </span>
         </div>
       </div>
@@ -242,7 +247,7 @@ export function Flashcard({
           <Repeat className="h-6 w-6" />
         </Button>
         <Button
-          variant={mastered.has(currentIndex) ? "default" : "outline"}
+          variant={masteredIndices.has(currentIndex) ? "default" : "outline"}
           size="lg"
           onClick={toggleMastered}
           className="w-14 h-14 rounded-xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_20px_-3px_rgba(0,0,0,0.1)] transition-shadow duration-300"

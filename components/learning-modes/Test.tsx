@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ export function Test({ terms, studySetId }: TestProps) {
     explanation: string;
   } | null>(null);
 
-  const generateQuestions = () => {
+  const generateQuestions = useCallback(() => {
     const shuffledTerms = [...terms].sort(() => Math.random() - 0.5);
     const generatedQuestions: Question[] = shuffledTerms.map((term, index) => {
       // Alternate between question types
@@ -96,11 +96,11 @@ export function Test({ terms, studySetId }: TestProps) {
     setIsAnswered(false);
     setScore(0);
     setIsComplete(false);
-  };
+  }, [terms]);
 
   useEffect(() => {
     generateQuestions();
-  }, [terms]);
+  }, [generateQuestions]);
 
   const currentQuestion = questions[currentIndex];
 

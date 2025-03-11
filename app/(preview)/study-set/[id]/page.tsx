@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Flashcard } from "@/components/learning-modes/Flashcard";
 import { Matching } from "@/components/learning-modes/Matching";
 import { Quiz } from "@/components/learning-modes/Quiz";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Write } from "@/components/learning-modes/Write";
 import { Test } from "@/components/learning-modes/Test";
 import { Overview } from "@/components/study-set/Overview";
@@ -48,7 +48,7 @@ export default function StudySetPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const fetchProgress = async () => {
+  const fetchProgress = useCallback(async () => {
     try {
       const progressResponse = await fetch(`/api/progress?studySetId=${id}`);
       if (!progressResponse.ok) {
@@ -59,7 +59,7 @@ export default function StudySetPage() {
     } catch (error) {
       console.error("Error fetching progress:", error);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,7 +86,7 @@ export default function StudySetPage() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, fetchProgress]);
 
   const handleProgressChange = () => {
     fetchProgress();
