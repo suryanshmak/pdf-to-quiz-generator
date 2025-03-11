@@ -1,10 +1,9 @@
 import { questionsSchema } from "@/lib/schemas";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-const prisma = new PrismaClient();
 
 export const maxDuration = 60;
 

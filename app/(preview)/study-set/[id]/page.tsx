@@ -95,14 +95,32 @@ export default function StudySetPage() {
   const calculateProgress = () => {
     if (!studySet || progress.length === 0) return { overall: 0, mastered: 0 };
 
-    // Calculate average score across all modes
-    const totalScore = progress.reduce((acc, p) => acc + p.score, 0);
-    const maxPossibleScore = studySet.terms.length * progress.length;
-    const overallProgress = Math.round((totalScore / maxPossibleScore) * 100);
+    // Group progress by mode to get the latest score for each mode
+    const latestProgressByMode = progress.reduce((acc, curr) => {
+      if (
+        !acc[curr.mode] ||
+        new Date(curr.createdAt) > new Date(acc[curr.mode].createdAt)
+      ) {
+        acc[curr.mode] = curr;
+      }
+      return acc;
+    }, {} as Record<string, Progress>);
 
-    // Count terms that have been mastered in any mode
-    const masteredCount = progress.reduce(
-      (acc, p) => Math.max(acc, p.score),
+    // Calculate total score from latest progress of each mode
+    const totalScore = Object.values(latestProgressByMode).reduce(
+      (acc, p) => acc + p.score,
+      0
+    );
+    const maxPossibleScore =
+      studySet.terms.length * Object.keys(latestProgressByMode).length;
+    const overallProgress =
+      maxPossibleScore > 0
+        ? Math.round((totalScore / maxPossibleScore) * 100)
+        : 0;
+
+    // Find the highest score across all modes for mastery count
+    const masteredCount = Math.max(
+      ...Object.values(latestProgressByMode).map((p) => p.score),
       0
     );
 
