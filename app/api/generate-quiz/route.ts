@@ -87,18 +87,29 @@ export async function POST(req: Request) {
       });
     }
 
+    // Extract base64 PDF data
+    const pdfData = firstFile.includes("base64,")
+      ? firstFile.split("base64,")[1]
+      : firstFile;
+    if (!pdfData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid PDF data format" }),
+        { status: 400 }
+      );
+    }
+
     try {
       const result = await model.generateContent([
         {
-          text: "You are a teacher. Your job is to take a document, and create a multiple choice test based on the content of the document. Each option should be roughly equal in length. Make sure to include a mix of easy, medium, and hard questions.",
+          text: "You are a teacher. Your job is to take a document, and create a multiple choice test based on the content of the document. Each option should be roughly equal in length. Make sure to include a mix of easy, medium, and hard questions. Mark the correct answer with [CORRECT] at the start of the option.",
         },
         {
-          text: "Create a multiple choice test with how many ever questions you can based on this document. After each question and its options, write '---' on a new line.",
+          text: "Create a multiple choice test with 10 questions based on this document. Format each question as:\n1. Question\na) Option\nb) Option\nc) Option\nd) Option\n---",
         },
         {
           inlineData: {
             mimeType: "application/pdf",
-            data: firstFile.split(",")[1] || firstFile,
+            data: pdfData,
           },
         },
       ]);
@@ -112,23 +123,36 @@ export async function POST(req: Request) {
         throw new Error("Empty response from AI model");
       }
 
-      // Split response into individual questions
+      console.log("AI Response:", responseText); // Log the raw response
+
       const questionBlocks = responseText.split("---").filter(Boolean);
       if (!questionBlocks.length) {
-        throw new Error("No questions generated");
+        throw new Error(
+          "No questions generated from response: " +
+            responseText.substring(0, 100)
+        );
       }
 
-      // Parse questions one by one
       const questions = [];
       for (const block of questionBlocks) {
-        const parsedQuestion = parseQuizResponse(block)[0];
-        if (parsedQuestion) {
-          questions.push(parsedQuestion);
+        try {
+          const parsedQuestion = parseQuizResponse(block)[0];
+          if (
+            parsedQuestion &&
+            parsedQuestion.question &&
+            parsedQuestion.options.length === 4 &&
+            parsedQuestion.answer
+          ) {
+            questions.push(parsedQuestion);
+          }
+        } catch (parseError) {
+          console.error("Error parsing question block:", block);
+          console.error("Parse error:", parseError);
         }
       }
 
       if (!questions.length) {
-        throw new Error("Failed to parse any questions");
+        throw new Error("Failed to parse any valid questions from response");
       }
 
       const validatedQuestions = questionsSchema.parse(questions);
@@ -160,10 +184,15 @@ export async function POST(req: Request) {
       return Response.json({
         questions: validatedQuestions,
         studySetId: studySet.id,
-        totalQuestions: questionBlocks.length,
+        totalQuestions: validatedQuestions.length,
       });
     } catch (error) {
-      console.error("Error in AI or database operation:", error);
+      console.error("Detailed error:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error instanceof Error ? error.constructor.name : typeof error,
+      });
+
       return new Response(
         JSON.stringify({
           error:
@@ -174,7 +203,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error("Error parsing request:", error);
+    console.error("Request parsing error:", error);
     return new Response(
       JSON.stringify({
         error: "Failed to parse request data",
