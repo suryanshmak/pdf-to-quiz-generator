@@ -38,17 +38,17 @@ function parseQuizResponse(text: string) {
         .trim();
 
       if (option && currentQuestion.options.length < 4) {
-        // Remove [CORRECT] prefix and set as answer
-        if (option.startsWith("[CORRECT]")) {
-          const cleanOption = option.replace("[CORRECT]", "").trim();
-          currentQuestion.options.push(cleanOption);
-          // Extract the option letter
+        // Check for [CORRECT] at start or end
+        const isCorrect = option.includes("[CORRECT]");
+        const cleanOption = option.replace("[CORRECT]", "").trim();
+        currentQuestion.options.push(cleanOption);
+
+        // If this was the correct option, set the answer
+        if (isCorrect) {
           const optionLetter = line.match(/[a-d]/i)?.[0]?.toUpperCase();
           if (optionLetter) {
             currentQuestion.answer = optionLetter;
           }
-        } else {
-          currentQuestion.options.push(option);
         }
       }
     }
